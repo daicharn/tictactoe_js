@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+ <head>
+ <meta charset="utf-8">
+ <title>まるばつゲーム</title>
+ <link rel="stylesheet" href="style.css">
+ </head>
+ <body>
+ <div id="wrapper">
+  <h1>
+   <img src="wrapper.png" alt="logo">
+  </h1>
+ </div>
+ <div>
+ <div id="menu"> 
+  <p>ゲームモード
+   <select id="select_mode">
+    <option value="cpu_random">CPU(ランダム)</option>
+    <option value="friend">友達と対戦</option>
+   </select>
+  </p>
+  <p>先制
+   <select id="select_first">
+    <option value="○">○</option>
+    <option value="×">×</option>
+   </select>
+   <button id="button_reset">リセット</button>
+  </p>
+ </div>
+  <table id="board">
+   <tr>
+    <td id="1-1" class="cell"></td>
+    <td id="1-2" class="cell"></td>
+    <td id="1-3" class="cell"></td>
+   </tr>
+   <tr>
+    <td id="2-1" class="cell"></td>
+    <td id="2-2" class="cell"></td>
+    <td id="2-3" class="cell"></td>
+   </tr>   
+   <tr>
+    <td id="3-1" class="cell"></td>
+    <td id="3-2" class="cell"></td>
+    <td id="3-3" class="cell"></td>
+   </tr>
+  </table>
+ </div>
+ <div id="result">
+  
+ </div>
+ </body>
+ <script src="script.js"></script>
+</html>
