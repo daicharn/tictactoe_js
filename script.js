@@ -32,19 +32,14 @@ for(let i = 0; i < cells.length; i++){
             cell.style.backgroundColor = 'rgb(216, 216, 216)';
 
             //勝ち
-            if(isWinner()){
+            if(getWinner() !== ""){
                 result_str.innerHTML = "<p>" + symbol + "の勝ち<p>";
                 flag_play = false;
             }
             //継続
             else if(count < count_max){
                 //入れ替え
-                if(symbol === "○"){
-                    symbol = "×";
-                }
-                else{
-                    symbol = "○";
-                }
+                symbol = getEnemySymbol(symbol);
 
                 //ゲームモードによる処理
                 if(count % 2 === 1){
@@ -58,6 +53,36 @@ for(let i = 0; i < cells.length; i++){
                             }
                         }
                     }
+                    //CPU(難しい)
+                    else if(select_mode.value === "cpu_difficult"){
+                        let point = 0;
+                        let eval = -99;
+                        let eval_max = -99;
+                        for(let i = 0; i < cells.length; i++){
+                            if(cells[i].innerText === ""){
+                                //真ん中が開いていれば取る
+                                if(i === 4){
+                                    point = 4;
+                                    break;
+                                }
+                                else{
+                                    //手を打つ
+                                    cells[i].innerText = symbol;
+                                    //次の相手の手を調べる
+                                    eval = minlevel();
+                                    //手を戻す
+                                    cells[i].innerText = "";
+
+                                    if(eval > eval_max){
+                                        eval_max = eval;
+                                        point = i;
+                                    }
+                                }
+                            }
+                        }
+                        //最善手を打つ
+                        cells[point].click();
+                    }
                 }
             }
             //引き分け終了
@@ -69,14 +94,74 @@ for(let i = 0; i < cells.length; i++){
     });
 }
 
+//コンピュータにとって最悪の手を見つける
+function minlevel(){
+    let score,score_min = 0;
+    let first = true;
+    for(let i = 0; i < cells.length; i++){
+        if(cells[i].innerText === ""){
+            //手を打つ
+            cells[i].innerText = getEnemySymbol();
+            //評価を算出
+            score = evaluate();
+            //手を戻す
+            cells[i].innerText = "";
+
+            if(first){
+                score_min = score;
+                first = false;
+            }
+            //最悪の手（相手にとって良い手）が見つかった
+            else if(score < score_min){
+                score_min = score;
+            }
+        }
+    }
+
+    return score_min;
+}
+
+//評価関数
+function evaluate(){
+    //CPUの勝ち
+    if(getWinner() === symbol){
+        return 10;
+    }
+    //プレイヤーの勝ち
+    else if(getWinner() === getEnemySymbol()){
+        return -10;
+    }
+    //引き分け
+    else{
+        return 0;
+    }
+}
+
+//コンピュータのコマを取得
+function getEnemySymbol(){
+    if(symbol === "○"){
+        return "×";
+    }
+    else{
+        return "○";
+    }
+}
+
+
+//先手の記号を取得する
+function getFirstSymbol(){
+    return select_first.value;
+}
+
 //先手を設定する
 function setFirstSymbol(){
-    symbol = select_first.value;
+    symbol = getFirstSymbol();
     select_first.disabled = true;
 }
 
+
 //勝敗の判定
-function isWinner(){
+function getWinner(){
     //縦横の判定
     for(let i = 0; i < 3; i++){
         //縦
@@ -90,11 +175,11 @@ function isWinner(){
 
         //縦の判定
         if(var_1 === var_2 && var_2 === var_3 && var_1 !== ""){
-            return true;
+            return var_1;
         }
         //横の判定
         if(hor_1 === hor_2 && hor_2 === hor_3 && hor_1 !== ""){
-            return true;
+            return hor_1;
         }
     }
 
@@ -107,13 +192,13 @@ function isWinner(){
     
     //斜めの判定
     if(cell_0 === cell_4 && cell_4 === cell_8 && cell_0 !== ""){
-        return true;
+        return cell_0;
     }
     if(cell_2 === cell_4 && cell_4 === cell_6 && cell_2 !== ""){
-        return true;
+        return cell_2;
     }
 
-    return false;
+    return "";
 }
 
 //リセット
