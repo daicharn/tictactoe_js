@@ -2,6 +2,7 @@ let symbol = "";
 let count = 0;
 let count_max = 9;
 let flag_play = true;
+
 let select_first = document.getElementById("select_first");
 let select_mode = document.getElementById("select_mode");
 let result_str = document.getElementById("result");
@@ -55,33 +56,8 @@ for(let i = 0; i < cells.length; i++){
                     }
                     //CPU(難しい)
                     else if(select_mode.value === "cpu_difficult"){
-                        let point = 0;
-                        let eval = -99;
-                        let eval_max = -99;
-                        for(let i = 0; i < cells.length; i++){
-                            if(cells[i].innerText === ""){
-                                //真ん中が開いていれば取る
-                                if(i === 4){
-                                    point = 4;
-                                    break;
-                                }
-                                else{
-                                    //手を打つ
-                                    cells[i].innerText = symbol;
-                                    //次の相手の手を調べる
-                                    eval = minlevel();
-                                    //手を戻す
-                                    cells[i].innerText = "";
-
-                                    if(eval > eval_max){
-                                        eval_max = eval;
-                                        point = i;
-                                    }
-                                }
-                            }
-                        }
-                        //最善手を打つ
-                        cells[point].click();
+                        //ミニマックス法で最善手を打つ
+                        cells[minimax(5)].click();
                     }
                 }
             }
@@ -94,16 +70,96 @@ for(let i = 0; i < cells.length; i++){
     });
 }
 
-//コンピュータにとって最悪の手を見つける
-function minlevel(){
+//ミニマックス法を用いて最善の手を算出
+function minimax(depth){
+    let point = 0;
+    let eval = -99;
+    let eval_max = -99;
+    for(let i = 0; i < cells.length; i++){
+        if(cells[i].innerText === ""){
+            //手を打つ
+            cells[i].innerText = symbol;
+
+            //最善手を探索
+            eval = minlevel(0,depth);
+
+            //手を戻す
+            cells[i].innerText = "";
+
+            if(eval > eval_max){
+                eval_max = eval;
+                point = i;
+            }
+        }
+    }
+
+    return point;
+}
+
+//評価関数
+function evaluate(depth){
+    //CPUの勝ち
+    if(getWinner() === symbol){
+        return 10 - depth;
+    }
+    //プレイヤーの勝ち
+    else if(getWinner() === getEnemySymbol()){
+        return depth - 10;
+    }
+    //引き分け
+    else{
+        return 0;
+    }
+}
+
+//コンピュータの手を見つける
+function maxlevel(level,depth){
+
+    if(level >= depth || getWinner() !== ""){
+        return evaluate(depth);
+    }
+
+    let score,score_max = 0;
+    let first = true;
+    for(let i = 0; i < cells.length; i++){
+        if(cells[i].innerText === ""){
+            //手を打つ
+            cells[i].innerText = symbol;
+            //評価を算出
+            score = minlevel(level + 1,depth);
+            //手を戻す
+            cells[i].innerText = "";
+
+            if(first){
+                score_max = score;
+                first = false;
+            }
+            //コンピュータにとって良い手が見つかった
+            else if(score > score_max){
+                score_max = score;
+            }
+        }
+    }
+
+    return score_max;
+}
+
+//プレイヤーの手を見つける
+function minlevel(level,depth){
+    
+    if(level >= depth || getWinner() !== ""){
+        return evaluate(depth);
+    }
+
     let score,score_min = 0;
     let first = true;
     for(let i = 0; i < cells.length; i++){
         if(cells[i].innerText === ""){
             //手を打つ
             cells[i].innerText = getEnemySymbol();
+
             //評価を算出
-            score = evaluate();
+            score = maxlevel(level + 1,depth);
             //手を戻す
             cells[i].innerText = "";
 
@@ -119,22 +175,6 @@ function minlevel(){
     }
 
     return score_min;
-}
-
-//評価関数
-function evaluate(){
-    //CPUの勝ち
-    if(getWinner() === symbol){
-        return 10;
-    }
-    //プレイヤーの勝ち
-    else if(getWinner() === getEnemySymbol()){
-        return -10;
-    }
-    //引き分け
-    else{
-        return 0;
-    }
 }
 
 //コンピュータのコマを取得
