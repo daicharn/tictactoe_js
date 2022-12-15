@@ -1,7 +1,16 @@
+const COUNT_MAX = 9;
+
+const SYMBOL_TYPE = {
+    maru: 0,
+    batsu: 1,
+    empty: 2
+}
+
 let symbol = "";
 let count = 0;
-let count_max = 9;
 let flag_play = true;
+//ボードの配列
+let board_array = new Array(9).fill(SYMBOL_TYPE.empty);
 
 let select_first = document.getElementById("select_first");
 let select_mode = document.getElementById("select_mode");
@@ -29,6 +38,8 @@ for(let i = 0; i < cells.length; i++){
             count++;
             //記号を配置
             cell.innerText = symbol;
+            //ボードの配列に代入
+            board_array[i] = convertSymbolToNumber(symbol);
             //背景色を固定
             cell.style.backgroundColor = 'rgb(216, 216, 216)';
 
@@ -38,7 +49,7 @@ for(let i = 0; i < cells.length; i++){
                 flag_play = false;
             }
             //継続
-            else if(count < count_max){
+            else if(count < COUNT_MAX){
                 //入れ替え
                 symbol = getEnemySymbol(symbol);
 
@@ -56,8 +67,9 @@ for(let i = 0; i < cells.length; i++){
                     }
                     //CPU(難しい)
                     else if(select_mode.value === "cpu_difficult"){
-                        //ミニマックス法で最善手を打つ
-                        cells[minimax(5)].click();
+                        //ミニマックス法（アルファベータカットを含む）で最善手を打つ
+                        let num = minimaxab(5);
+                        cells[num].click();
                     }
                 }
             }
@@ -70,26 +82,38 @@ for(let i = 0; i < cells.length; i++){
     });
 }
 
-//ミニマックス法を用いて最善の手を算出
-function minimax(depth){
+//記号（〇×）を数値に変換する
+function convertSymbolToNumber(symbol){
+    if(symbol == "○"){
+        return SYMBOL_TYPE.maru;
+    }
+    else if(symbol == "×"){
+        return SYMBOL_TYPE.batsu;
+    }
+}
+
+//ミニマックス法（アルファベータカットを含む）を用いて最善の手を算出
+function minimaxab(depth){
     let point = 0;
     let eval = -99;
     let eval_max = -99;
     for(let i = 0; i < cells.length; i++){
         if(cells[i].innerText === ""){
             //手を打つ
-            cells[i].innerText = symbol;
+            board_array[i] = convertSymbolToNumber(symbol);
 
             //最善手を探索
-            eval = minlevel(0,depth);
+            eval = minlevel(0, depth, eval_max);
 
             //手を戻す
-            cells[i].innerText = "";
+            board_array[i] = SYMBOL_TYPE.empty;
 
             if(eval > eval_max){
                 eval_max = eval;
                 point = i;
             }
+
+            console.log(i + " " + eval);
         }
     }
 
@@ -99,11 +123,11 @@ function minimax(depth){
 //評価関数
 function evaluate(depth){
     //CPUの勝ち
-    if(getWinner() === symbol){
+    if(getWinner() === convertSymbolToNumber(symbol)){
         return 10 - depth;
     }
     //プレイヤーの勝ち
-    else if(getWinner() === getEnemySymbol()){
+    else if(getWinner() === convertSymbolToNumber(getEnemySymbol())){
         return depth - 10;
     }
     //引き分け
@@ -113,7 +137,7 @@ function evaluate(depth){
 }
 
 //コンピュータの手を見つける
-function maxlevel(level,depth){
+function maxlevel(level, depth, eval_min){
 
     if(level >= depth || getWinner() !== ""){
         return evaluate(depth);
@@ -122,18 +146,36 @@ function maxlevel(level,depth){
     let score,score_max = 0;
     let first = true;
     for(let i = 0; i < cells.length; i++){
-        if(cells[i].innerText === ""){
+        if(board_array[i] === SYMBOL_TYPE.empty){
             //手を打つ
-            cells[i].innerText = symbol;
-            //評価を算出
-            score = minlevel(level + 1,depth);
+            board_array[i] = convertSymbolToNumber(symbol);
+            //初回のみは無条件で探索を行う
+            if(first){
+                //評価を算出
+                score = minlevel(level + 1, depth, -99);
+            }
+            //初回以外は現在のスコアが上の層の最小値より既に高ければ探索を中止して現在のスコアを返す
+            else{
+                if(score_max > eval_min){
+                    //console.log("max", level, depth, i, score_max, eval_min);
+                    //手を戻す
+                    board_array[i] = SYMBOL_TYPE.empty;
+                    return score_max;
+                }
+                else{
+                    //評価を算出
+                    score = minlevel(level + 1, depth, score_max);
+                }
+            }
+
             //手を戻す
-            cells[i].innerText = "";
+            board_array[i] = SYMBOL_TYPE.empty;
 
             if(first){
                 score_max = score;
                 first = false;
             }
+
             //コンピュータにとって良い手が見つかった
             else if(score > score_max){
                 score_max = score;
@@ -145,7 +187,7 @@ function maxlevel(level,depth){
 }
 
 //プレイヤーの手を見つける
-function minlevel(level,depth){
+function minlevel(level, depth, eval_max){
     
     if(level >= depth || getWinner() !== ""){
         return evaluate(depth);
@@ -154,19 +196,39 @@ function minlevel(level,depth){
     let score,score_min = 0;
     let first = true;
     for(let i = 0; i < cells.length; i++){
-        if(cells[i].innerText === ""){
+        if(board_array[i] === SYMBOL_TYPE.empty){
             //手を打つ
-            cells[i].innerText = getEnemySymbol();
+            board_array[i] = convertSymbolToNumber(getEnemySymbol());
 
-            //評価を算出
-            score = maxlevel(level + 1,depth);
+            //初回のみは無条件で探索を行う
+            if(first){
+                //評価を算出
+                score = maxlevel(level + 1, depth, 99);
+            }
+            //初回以外は現在のスコアが上の層の最大値より既に低ければ探索を中止して現在のスコアを返す
+            else{
+                if(score_min < eval_max){
+                    //console.log("min", level, depth, i, score_min, eval_max);
+                    //手を戻す
+                    board_array[i] = SYMBOL_TYPE.empty;
+                    return score_min;
+                }
+                else{
+                    //評価を算出
+                    score = maxlevel(level + 1, depth, score_min);
+                }
+            }
+
             //手を戻す
-            cells[i].innerText = "";
+            board_array[i] = SYMBOL_TYPE.empty;
 
             if(first){
                 score_min = score;
                 first = false;
             }
+
+            //上の層の現在の最大値よりも
+
             //最悪の手（相手にとって良い手）が見つかった
             else if(score < score_min){
                 score_min = score;
@@ -205,36 +267,36 @@ function getWinner(){
     //縦横の判定
     for(let i = 0; i < 3; i++){
         //縦
-        let var_1 = cells[i].innerText;
-        let var_2 = cells[3 + i].innerText;
-        let var_3 = cells[6 + i].innerText;
+        let var_1 = board_array[i];
+        let var_2 = board_array[3 + i];
+        let var_3 = board_array[6 + i];
         //横
-        let hor_1 = cells[3 * i].innerText;
-        let hor_2 = cells[3 * i + 1].innerText;
-        let hor_3 = cells[3 * i + 2].innerText;
+        let hor_1 = board_array[3 * i];
+        let hor_2 = board_array[3 * i + 1];
+        let hor_3 = board_array[3 * i + 2];
 
         //縦の判定
-        if(var_1 === var_2 && var_2 === var_3 && var_1 !== ""){
+        if(var_1 === var_2 && var_2 === var_3 && var_1 !== SYMBOL_TYPE.empty){
             return var_1;
         }
         //横の判定
-        if(hor_1 === hor_2 && hor_2 === hor_3 && hor_1 !== ""){
+        if(hor_1 === hor_2 && hor_2 === hor_3 && hor_1 !== SYMBOL_TYPE.empty){
             return hor_1;
         }
     }
 
     //斜め
-    let cell_0 = cells[0].innerText;
-    let cell_2 = cells[2].innerText;
-    let cell_4 = cells[4].innerText;
-    let cell_6 = cells[6].innerText;
-    let cell_8 = cells[8].innerText;
+    let cell_0 = board_array[0];
+    let cell_2 = board_array[2];
+    let cell_4 = board_array[4];
+    let cell_6 = board_array[6];
+    let cell_8 = board_array[8];
     
     //斜めの判定
-    if(cell_0 === cell_4 && cell_4 === cell_8 && cell_0 !== ""){
+    if(cell_0 === cell_4 && cell_4 === cell_8 && cell_0 !== SYMBOL_TYPE.empty){
         return cell_0;
     }
-    if(cell_2 === cell_4 && cell_4 === cell_6 && cell_2 !== ""){
+    if(cell_2 === cell_4 && cell_4 === cell_6 && cell_2 !== SYMBOL_TYPE.empty){
         return cell_2;
     }
 
@@ -250,6 +312,9 @@ function clearBoard(){
     select_first.disabled = false;
 
     result_str.innerHTML = "";
+
+    //ボードの配列をリセット
+    board_array.fill(SYMBOL_TYPE.empty);
 
     //すべてのマスの記号と背景色をリセット
     for(let i = 0; i < cells.length; i++){
